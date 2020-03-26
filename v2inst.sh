@@ -2,14 +2,8 @@
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
-#====================================================
-#	System Request:Centos 7+
-#	Author:	HanX
-#	Dscription: V2ray ws+tls With Bt-Panel
-#	Version: 1.1.20.0320
-#	Email:maxbyrne@gmail.com
-#	Official document: www.v2ray.com
-#====================================================
+#   Dscription: V2ray ws+tls With Bt-Panel
+#   Version: 1.1.20.0326
 
 #fonts color
 Red="\033[1;31m"
@@ -19,7 +13,6 @@ Blue="\033[1;36m"
 Font="\033[0m"
 
 OK="${Green}[OK]${Font}"
-Error="${Red}[错误]${Font}"
 web_dir="/www/wwwroot"
 
 
@@ -27,8 +20,9 @@ install_v2ray_ws_tls() {
     install_prepare
     v2ray_install
     V2Ray_information
-    start_service    
+    start_service
 }
+
 
 install_prepare() {
     if [[ "${ID}" == "centos" ]]; then
@@ -52,16 +46,14 @@ install_prepare() {
     read -rp "请输入域名信息(eg:www.hanx.vip):" domain
 
     webstate=26
-    if [[ -e "/www/server/panel/vhost/nginx/${domain}.conf" ]]; then
-        sleep 1
-    else
-        Website_config
-#        echo -e "$${Yellow} 未检测到 ${domain} 内容，请先配置……${Font}"
-#        exit 1
-    fi    
+    Website_config
+    acme_SSL
 
     yum install -y wget
     yum reinstall glibc-headers gcc-c++ -y
+#    wget -nc https://www.openssl.org/source/openssl-1.1.1a.tar.gz
+#    tar xzvf openssl-1.1.1a.tar.gz
+#    mkdir /www/server/nginx/ssl
 }
 
 
@@ -69,19 +61,37 @@ Website_config() {
     if [[ -e "/www/server/panel/vhost/nginx/${domain}.conf" ]]; then
         sleep 1
     else
-      echo -e "${Yellow} 未检测到 ${domain} 内容！${Font}"    
+      echo -e "${Yellow} 未检测到 ${domain} 内容！${Font}"
       read -rp " 是否尝试自动配置？ [Y/N]?" autowebcfg
         case $autowebcfg in
         [yY])
             WriteWebConf
+            Website_arrange
             echo -e "${OK} 自动配置完成！ ${Font}"
             ;;
         *)
             echo -e "${Yellow}请手动配置后重试！ ${Font}"
-            exit 1            
+            exit 
             ;;
         esac
-    fi  
+    fi
+}
+
+
+acme_SSL() {
+    if [[ -e "/www/server/panel/vhost/cert/${domain}/" ]]; then
+        sleep 1
+    else
+        curl https://get.acme.sh | sh
+        mkdir -p /www/wwwroot/${domain}/.well-known/acme-challenge
+        chmod 777 /www/wwwroot/${domain}/.well-known/acme-challenge        
+        ~/.acme.sh/acme.sh  --issue  -d "${domain}"  --webroot /www/wwwroot/${domain}/
+        mkdir -p /www/server/panel/vhost/cert/${domain}/
+        ~/.acme.sh/acme.sh  --installcert  -d  "${domain}" \
+            --key-file   /www/server/panel/vhost/cert/${domain}/privkey.key \
+            --fullchain-file /www/server/panel/vhost/cert/${domain}/fullchain.cer \
+            --reloadcmd  "/www/server/nginx/sbin/nginx -s reload"
+    fi
 }
 
 
@@ -109,11 +119,17 @@ v2ray_install() {
         }
 } 
 EOF
+    if [[ $(V2ray_info_query '\"aid\"') == 16  ]]; then
+        sleep 1
+    else    
+        sed -i "/    ssl_certificate    /www/server/panel/vhost/cert/${domain}/fullchain.cer/c  \    ssl_certificate    /www/server/panel/vhost/cert/${domain}/fullchain.pem;" /www/server/panel/vhost/nginx/${domain}.conf
+        sed -i "/    ssl_certificate_key    \/www\/server\/panel\/vhost\/cert\/${domain}\/privkey.key;/c  \    ssl_certificate_key    \/www\/server\/panel\/vhost\/cert\/${domain}\/privkey.pem;" /www/server/panel/vhost/nginx/${domain}.conf
+    fi
 
     cat >/usr/local/vmess_info.json <<-EOF
 {
   "v": "2",
-  "ps": "v2ray_${domain}",  
+  "ps": "v2ray_${domain}",
   "add": "${domain}",
   "port": "443",
   "id": "${UUID}",
@@ -127,9 +143,11 @@ EOF
 EOF
 }
 
+
 V2ray_info_query() {
     grep "$1" "/usr/local/vmess_info.json" | awk -F '"' '{print $4}'
 }
+
 
 V2Ray_information() {
     clear
@@ -152,7 +170,11 @@ V2Ray_information() {
     }
 }
 
+
 WriteWebConf() {
+      cat >/www/server/panel/vhost/rewrite/${domain}.conf <<EOF
+EOF
+
       cat >/www/server/panel/vhost/nginx/${domain}.conf <<EOF
 server
 {
@@ -169,8 +191,9 @@ server
         rewrite ^(/.*)$ https://\$host\$1 permanent;
     }
     #HTTP_TO_HTTPS_END
-    ssl_certificate    /www/server/panel/vhost/cert/${domain}/fullchain.pem;
-    ssl_certificate_key    /www/server/panel/vhost/cert/${domain}/privkey.pem;
+    ssl_certificate    /www/server/panel/vhost/cert/${domain}/fullchain.cer;
+    ssl_certificate_key    /www/server/panel/vhost/cert/${domain}/privkey.key;
+
     ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
     ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:HIGH:!aNULL:!MD5:!RC4:!DHE;
     ssl_prefer_server_ciphers on;
@@ -179,26 +202,26 @@ server
     error_page 497  https://\$host\$request_uri;
 
     #SSL-END
-    
+
     #ERROR-PAGE-START  错误页配置，可以注释、删除或修改
     #error_page 404 /404.html;
     #error_page 502 /502.html;
     #ERROR-PAGE-END
-    
+
     #PHP-INFO-START  PHP引用配置，可以注释或修改
     include enable-php-00.conf;
     #PHP-INFO-END
-    
+
     #REWRITE-START URL重写规则引用,修改后将导致面板设置的伪静态规则失效
     include /www/server/panel/vhost/rewrite/${domain}.conf;
     #REWRITE-END
-    
+
     #禁止访问的文件或目录
     location ~ ^/(\.user.ini|\.htaccess|\.git|\.svn|\.project|LICENSE|README.md)
     {
         return 404;
     }
-    
+
     #一键申请SSL证书验证目录相关设置
     location ~ \.well-known{
         allow all;
@@ -210,7 +233,7 @@ server
         error_log off;
         access_log /dev/null;
     }
-    
+
     location ~ .*\.(js|css)?$
     {
         expires      12h;
@@ -223,6 +246,19 @@ server
 EOF
   webstate=16
 }
+
+
+Website_arrange() {
+    if [[ -e "/www/wwwroot/${domain}" ]]; then
+        sleep 1   
+    else     
+        mkdir -p /www/wwwroot/${domain}
+    fi    
+    cd /www/wwwroot/${domain}
+    wget -nc https://github.com/hxlive/V2ray_ws_tls_With_Bt_Panel/raw/master/SlideShow.zip
+    unzip SlideShow.zip
+}
+
 
 WriteV2rayConf() {
       cat >/etc/v2ray/config.json <<EOF
@@ -311,16 +347,20 @@ WriteV2rayConf() {
 EOF
 }
 
+
 start_service() {
     systemctl daemon-reload
     /www/server/nginx/sbin/nginx -s reload
     systemctl restart v2ray.service
 }
+
+
 stop_service() {
     systemctl stop v2ray
     systemctl stop v2ray.service
     systemctl disable v2ray.service
 }
+
 
 uninstall_V2Ray() {
     systemctl stop v2ray
@@ -328,7 +368,10 @@ uninstall_V2Ray() {
     systemctl disable v2ray.service
 
     if [[ $(V2ray_info_query '\"aid\"') == 16  ]]; then
+        rm -rf /www/server/panel/vhost/rewrite/$(V2ray_info_query '\"add\"').conf
         rm -rf /www/server/panel/vhost/nginx/$(V2ray_info_query '\"add\"').conf
+        rm -rf /www/server/panel/vhost/cert/$(V2ray_info_query '\"add\"')
+        rm -rf /www/wwwroot/$(V2ray_info_query '\"add\"')/
     else    
         sed -i "/\location \/vcache\//,/}/d"  /www/server/panel/vhost/nginx/$(V2ray_info_query '\"add\"').conf
     fi
@@ -343,14 +386,15 @@ uninstall_V2Ray() {
 Main_menu() {
   clear    
     echo -e ""
-    echo -e "    ${Blue}V2ray 部署脚本 [${shell_version}]${Font}"
-    echo -e "    ${Blue}---- authored by HANX ----${Font}"
+    echo -e "    ${Blue}V2ray (ws+tls) With 宝塔 部署脚本${Font}"
+    echo -e "      ${Blue}---- authored by hxlive ----${Font}"
     echo -e ""
-    echo -e " ———————————— 安装向导 ————————————"
-    echo -e " ${Green}1. 安装 V2Ray (ws+tls)${Font}"
-    echo -e " ${Green}2. 查看 V2Ray 配置信息${Font}"
-    echo -e " ${Red}3. 卸载 V2Ray 及配置${Font}"
-    echo -e " ${Green}4. 退出部署脚本${Font}"
+    echo -e " ${Yellow}——————————— 安装选项 ———————————${Font}"
+    echo -e ""    
+    echo -e "    ${Green}1. 安装 V2Ray (ws+tls)${Font}"
+    echo -e "    ${Green}2. 查看 V2Ray 配置信息${Font}"
+    echo -e "    ${Red}3. 卸载 V2Ray 及配置${Font}"
+    echo -e "    ${Green}4. 退出部署脚本${Font}"
     echo -e ""    
     read -rp " 请输入数字：" menu_num
     case $menu_num in

@@ -3,7 +3,7 @@ PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
 #   Dscription: V2ray ws+tls With Bt-Panel
-#   Version: 1.1.20.0326
+#   Version: 1.2.20.0328
 
 #fonts color
 Red="\033[1;31m"
@@ -51,9 +51,6 @@ install_prepare() {
 
     yum install -y wget
     yum reinstall glibc-headers gcc-c++ -y
-#    wget -nc https://www.openssl.org/source/openssl-1.1.1a.tar.gz
-#    tar xzvf openssl-1.1.1a.tar.gz
-#    mkdir /www/server/nginx/ssl
 }
 
 
@@ -386,15 +383,16 @@ uninstall_V2Ray() {
 Main_menu() {
   clear    
     echo -e ""
-    echo -e "    ${Blue}V2ray (ws+tls) With 宝塔 部署脚本${Font}"
-    echo -e "      ${Blue}---- authored by hxlive ----${Font}"
+    echo -e "  ${Blue}V2ray (ws+tls) With 宝塔 部署脚本${Font}"
+    echo -e "    ${Blue}---- authored by hxlive ----${Font}"
     echo -e ""
-    echo -e " ${Yellow}——————————— 安装选项 ———————————${Font}"
+    echo -e " ${Yellow}———————————— 安装选项 ————————————${Font}"
     echo -e ""    
     echo -e "    ${Green}1. 安装 V2Ray (ws+tls)${Font}"
     echo -e "    ${Green}2. 查看 V2Ray 配置信息${Font}"
-    echo -e "    ${Red}3. 卸载 V2Ray 及配置${Font}"
-    echo -e "    ${Green}4. 退出部署脚本${Font}"
+    echo -e "    ${Green}3. 升级 V2Ray Core${Font}"
+    echo -e "    ${Red}4. 卸载 V2Ray 及配置${Font}"
+    echo -e "    ${Green}5. 退出 V2Ray 部署脚本${Font}"
     echo -e ""    
     read -rp " 请输入数字：" menu_num
     case $menu_num in
@@ -405,9 +403,12 @@ Main_menu() {
         V2Ray_information
         ;;
     3)
-        uninstall_V2Ray
+        bash <(curl -L -s https://install.direct/go.sh)
         ;;
     4)
+        uninstall_V2Ray
+        ;;
+    5)
         exit 0
         ;;
     *)

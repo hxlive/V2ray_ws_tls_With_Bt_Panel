@@ -3,7 +3,7 @@ PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
 #   Dscription: V2ray ws+tls With Bt-Panel
-#   Version: 1.2.20.0328
+#   Version: 1.3.20.00908
 
 #fonts color
 Red="\033[1;31m"
@@ -93,12 +93,13 @@ acme_SSL() {
 
 
 v2ray_install() {
-    bash <(curl -L -s https://install.direct/go.sh)
+    curl -O https://raw.githubusercontent.com/v2fly/fhs-install-v2ray/master/install-release.sh
+    bash install-release.sh
     
     [ -z "$UUID" ] && UUID=$(cat /proc/sys/kernel/random/uuid)
     PORT=$((RANDOM + 10000))
 
-    cd /etc/v2ray/
+    cd /usr/local/etc/v2ray/
     WriteV2rayConf
 
     sed -i '$d' /www/server/panel/vhost/nginx/${domain}.conf
@@ -150,7 +151,7 @@ V2Ray_information() {
     clear
     vmess_link="vmess://$(base64 -w 0 /usr/local/vmess_info.json)"
     {
-        echo -e "${Green} V2ray+ws+tls 安装成功${Font}"
+        echo -e "${Green} V2ray vmess+ws+tls 安装成功${Font}"
         echo -e "${Blue}=====================================================${Font}"
         echo -e "${Green} V2ray 配置信息 ${Font}"
         echo -e "${Green} 地址（address）:${Font} $(V2ray_info_query '\"add\"') "
@@ -258,7 +259,7 @@ Website_arrange() {
 
 
 WriteV2rayConf() {
-      cat >/etc/v2ray/config.json <<EOF
+      cat >/usr/local/etc/v2ray/config.json <<EOF
 {
   "log": {
     "access": "/var/log/v2ray/access.log",
@@ -346,6 +347,8 @@ EOF
 
 
 start_service() {
+    systemctl enable v2ray
+    systemctl start v2ray    
     systemctl daemon-reload
     /www/server/nginx/sbin/nginx -s reload
     systemctl restart v2ray.service
@@ -363,6 +366,7 @@ uninstall_V2Ray() {
     systemctl stop v2ray
     systemctl stop v2ray.service
     systemctl disable v2ray.service
+    bash install-release.sh --remove
 
     if [[ $(V2ray_info_query '\"aid\"') == 16  ]]; then
         rm -rf /www/server/panel/vhost/rewrite/$(V2ray_info_query '\"add\"').conf
@@ -375,6 +379,7 @@ uninstall_V2Ray() {
     rm -rf /etc/systemd/system/v2ray.service
     rm -rf /usr/bin/v2ray
     rm -rf /etc/v2ray
+    rm -rf /usr/local/etc/v2ray/
     systemctl daemon-reload
     echo -e "${OK} ${GreenBG} 卸载完成，谢谢使用~ ${Font}"
 }
@@ -392,7 +397,7 @@ Main_menu() {
     echo -e "    ${Green}2. 查看 V2Ray 配置信息${Font}"
     echo -e "    ${Green}3. 升级 V2Ray Core${Font}"
     echo -e "    ${Red}4. 卸载 V2Ray 及配置${Font}"
-    echo -e "    ${Green}5. 退出 V2Ray 部署脚本${Font}"
+    echo -e "    ${Green}5. 退出 V2Ray 部署脚本${Font}" 
     echo -e ""    
     read -rp " 请输入数字：" menu_num
     case $menu_num in
@@ -403,7 +408,8 @@ Main_menu() {
         V2Ray_information
         ;;
     3)
-        bash <(curl -L -s https://install.direct/go.sh)
+        curl -O https://raw.githubusercontent.com/v2fly/fhs-install-v2ray/master/install-release.sh
+        bash install-release.sh
         ;;
     4)
         uninstall_V2Ray

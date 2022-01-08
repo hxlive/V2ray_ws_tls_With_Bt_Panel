@@ -3,7 +3,7 @@ PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
 #   Dscription: V2ray ws+tls With Bt-Panel
-#   Version: 1.3.20.00908
+#   Version: 1.4.22.0106
 
 #fonts color
 Red="\033[1;31m"
@@ -16,13 +16,30 @@ OK="${Green}[OK]${Font}"
 web_dir="/www/wwwroot"
 
 
-install_v2ray_ws_tls() {
+install_V2ray_VMESS_ws_tls() {
     install_prepare
-    v2ray_install
-    V2Ray_information
+    v2ray_VMESS_install
+    V2Ray_VMESS_information
     start_service
 }
 
+install_V2ray_VLESS_ws_tls() {
+    install_prepare
+    v2ray_VLESS_install
+    V2Ray_VLESS_information
+    start_service    
+}
+
+
+Display_V2Ray_information(){
+    if [[ ! -f "/usr/local/vmess_info.json" ]]; then
+        V2ray_info_query
+        V2Ray_VLESS_information
+    else
+        V2ray_info_query
+        V2Ray_VMESS_information
+    fi
+}
 
 install_prepare() {
     if [[ "${ID}" == "centos" ]]; then
@@ -92,7 +109,7 @@ acme_SSL() {
 }
 
 
-v2ray_install() {
+v2ray_VMESS_install() {
     curl -O https://raw.githubusercontent.com/v2fly/fhs-install-v2ray/master/install-release.sh
     bash install-release.sh
     
@@ -100,7 +117,7 @@ v2ray_install() {
     PORT=$((RANDOM + 10000))
 
     cd /usr/local/etc/v2ray/
-    WriteV2rayConf
+    Write_VMESS_Conf
 
     sed -i '$d' /www/server/panel/vhost/nginx/${domain}.conf
     cat >>/www/server/panel/vhost/nginx/${domain}.conf <<EOF
@@ -142,12 +159,68 @@ EOF
 }
 
 
-V2ray_info_query() {
-    grep "$1" "/usr/local/vmess_info.json" | awk -F '"' '{print $4}'
+v2ray_VLESS_install() {
+    curl -O https://raw.githubusercontent.com/v2fly/fhs-install-v2ray/master/install-release.sh
+    bash install-release.sh
+    
+    [ -z "$UUID" ] && UUID=$(cat /proc/sys/kernel/random/uuid)
+    PORT=$((RANDOM + 10000))
+
+    cd /usr/local/etc/v2ray/
+    Write_VLESS_Conf
+
+    sed -i '$d' /www/server/panel/vhost/nginx/${domain}.conf
+    cat >>/www/server/panel/vhost/nginx/${domain}.conf <<EOF
+
+        location /6986f19137896fba/ { 
+        if (\$http_upgrade != "websocket") { 
+            return 404;
+            }
+        proxy_redirect off;
+        proxy_pass http://127.0.0.1:${PORT}; 
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        }
+} 
+EOF
+    if [[ $(V2ray_info_query '\"aid\"') == 16  ]]; then
+        sleep 1
+    else    
+        sed -i "/    ssl_certificate    /www/server/panel/vhost/cert/${domain}/fullchain.cer/c  \    ssl_certificate    /www/server/panel/vhost/cert/${domain}/fullchain.pem;" /www/server/panel/vhost/nginx/${domain}.conf
+        sed -i "/    ssl_certificate_key    \/www\/server\/panel\/vhost\/cert\/${domain}\/privkey.key;/c  \    ssl_certificate_key    \/www\/server\/panel\/vhost\/cert\/${domain}\/privkey.pem;" /www/server/panel/vhost/nginx/${domain}.conf
+    fi
+
+    cat >/usr/local/vless_info.json <<-EOF
+{
+  "v": "2",
+  "ps": "v2ray_${domain}",
+  "add": "${domain}",
+  "port": "443",
+  "id": "${UUID}",
+  "net": "ws",
+  "type": "none",
+  "host": "${domain}",
+  "path": "/6986f19137896fba/",
+  "tls": "tls"
+}
+EOF
 }
 
 
-V2Ray_information() {
+V2ray_info_query() {
+    if [[ ! -f "/usr/local/vmess_info.json" ]]; then
+        grep "$1" "/usr/local/vless_info.json" | awk -F '"' '{print $4}'
+    else
+        grep "$1" "/usr/local/vmess_info.json" | awk -F '"' '{print $4}'
+    fi
+}
+
+
+V2Ray_VMESS_information() {
     clear
     vmess_link="vmess://$(base64 -w 0 /usr/local/vmess_info.json)"
     {
@@ -168,6 +241,26 @@ V2Ray_information() {
     }
 }
 
+
+V2Ray_VLESS_information() {
+    clear
+    vless_link="vless://$(V2ray_info_query '\"id\"')@$(V2ray_info_query '\"add\"'):443?encryption=none&security=tls&type=ws&host=$(V2ray_info_query '\"add\"')&path=%2f6986f19137896fba%2f#$(V2ray_info_query '\"add\"')"
+    {
+        echo -e "${Green} V2ray vless+ws+tls 安装成功${Font}"
+        echo -e "${Blue}=====================================================${Font}"
+        echo -e "${Green} V2ray 配置信息 ${Font}"
+        echo -e "${Green} 地址（address）:${Font} $(V2ray_info_query '\"add\"')"
+        echo -e "${Green} 端口（port）：${Font} $(V2ray_info_query '\"port\"')"
+        echo -e "${Green} 用户ID（id）：${Font} $(V2ray_info_query '\"id\"')"
+        echo -e "${Green} 加密方式（security）：${Font} none"
+        echo -e "${Green} 传输协议（network）：${Font} ws"
+        echo -e "${Green} 伪装类型（type）：${Font} none"
+        echo -e "${Green} 路径（不要落下/）：${Font} /6986f19137896fba/"
+        echo -e "${Green} 底层传输安全：${Font} tls"
+        echo -e "${Blue}=====================================================${Font}" 
+        echo -e "${Yellow} URL导入链接:${vless_link} ${Font}"
+    }
+}
 
 WriteWebConf() {
       cat >/www/server/panel/vhost/rewrite/${domain}.conf <<EOF
@@ -258,7 +351,7 @@ Website_arrange() {
 }
 
 
-WriteV2rayConf() {
+Write_VMESS_Conf() {
       cat >/usr/local/etc/v2ray/config.json <<EOF
 {
   "log": {
@@ -346,6 +439,41 @@ EOF
 }
 
 
+Write_VLESS_Conf() {
+      cat >/usr/local/etc/v2ray/config.json <<EOF    
+{
+  "inbounds": [
+    {
+      "listen":"127.0.0.1",
+      "port": ${PORT},
+      "protocol": "vless",
+      "settings": {
+        "decryption": "none",
+        "clients": [
+          {
+            "id": "${UUID}",
+            "level": 0
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "ws",
+        "wsSettings": {
+        "path": "/6986f19137896fba/"
+        }
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "settings": {}
+    }
+  ]
+}
+EOF
+}
+
 start_service() {
     systemctl enable v2ray
     systemctl start v2ray    
@@ -393,28 +521,32 @@ Main_menu() {
     echo -e ""
     echo -e " ${Yellow}———————————— 安装选项 ————————————${Font}"
     echo -e ""    
-    echo -e "    ${Green}1. 安装 V2Ray (ws+tls)${Font}"
-    echo -e "    ${Green}2. 查看 V2Ray 配置信息${Font}"
-    echo -e "    ${Green}3. 升级 V2Ray Core${Font}"
-    echo -e "    ${Red}4. 卸载 V2Ray 及配置${Font}"
-    echo -e "    ${Green}5. 退出 V2Ray 部署脚本${Font}" 
+    echo -e "    ${Green}1. 安装 V2Ray (VMESS+ws+tls)${Font}"
+    echo -e "    ${Green}2. 安装 V2Ray (VLESS+ws+tls)${Font}"
+    echo -e "    ${Green}3. 查看 V2Ray 配置信息${Font}"
+    echo -e "    ${Green}4. 升级 V2Ray Core${Font}"
+    echo -e "    ${Red}5. 卸载 V2Ray 及配置${Font}"
+    echo -e "    ${Green}6. 退出 V2Ray 部署脚本${Font}" 
     echo -e ""    
     read -rp " 请输入数字：" menu_num
     case $menu_num in
     1)
-        install_v2ray_ws_tls
+        install_V2ray_VMESS_ws_tls
         ;;
     2)
-        V2Ray_information
+        install_V2ray_VLESS_ws_tls
         ;;
     3)
+        Display_V2Ray_information
+        ;;
+    4)
         curl -O https://raw.githubusercontent.com/v2fly/fhs-install-v2ray/master/install-release.sh
         bash install-release.sh
         ;;
-    4)
+    5)
         uninstall_V2Ray
         ;;
-    5)
+    6)
         exit 0
         ;;
     *)

@@ -3,7 +3,7 @@ PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
 #   Dscription: V2ray ws+tls With Bt-Panel
-#   Version: 1.4.22.0106
+#   Version: 1.4.22.0115
 
 #fonts color
 Red="\033[1;31m"
@@ -121,7 +121,7 @@ v2ray_VMESS_install() {
 
     sed -i '$d' /www/server/panel/vhost/nginx/${domain}.conf
     cat >>/www/server/panel/vhost/nginx/${domain}.conf <<EOF
-        location /vcache/
+        location /6986f19137896fba/
         {
         proxy_redirect off;
         proxy_pass http://127.0.0.1:${PORT};
@@ -152,7 +152,7 @@ EOF
   "net": "ws",
   "type": "none",
   "host": "${domain}",
-  "path": "/vcache/",
+  "path": "/6986f19137896fba/",
   "tls": "tls"
 }
 EOF
@@ -173,9 +173,6 @@ v2ray_VLESS_install() {
     cat >>/www/server/panel/vhost/nginx/${domain}.conf <<EOF
 
         location /6986f19137896fba/ { 
-        if (\$http_upgrade != "websocket") { 
-            return 404;
-            }
         proxy_redirect off;
         proxy_pass http://127.0.0.1:${PORT}; 
         proxy_http_version 1.1;
@@ -201,6 +198,7 @@ EOF
   "add": "${domain}",
   "port": "443",
   "id": "${UUID}",
+  "aid": "${webstate}",  
   "net": "ws",
   "type": "none",
   "host": "${domain}",
@@ -234,7 +232,7 @@ V2Ray_VMESS_information() {
         echo -e "${Green} 加密方式（security）：${Font} auto"
         echo -e "${Green} 传输协议（network）：${Font} ws"
         echo -e "${Green} 伪装类型（type）：${Font} none"
-        echo -e "${Green} 路径（不要落下/）：${Font} /vcache/"
+        echo -e "${Green} 路径（不要落下/）：${Font} /6986f19137896fba/"
         echo -e "${Green} 底层传输安全：${Font} tls"
         echo -e "${Blue}=====================================================${Font}" 
         echo -e "${Yellow} URL导入链接:${vmess_link} ${Font}"
@@ -377,7 +375,7 @@ Write_VMESS_Conf() {
       "network": "ws",
       "security": "auto",
       "wsSettings": {
-        "path": "/vcache/",
+        "path": "/6986f19137896fba/",
         "headers": {
           "Host": "${domain}"
         }
@@ -501,8 +499,8 @@ uninstall_V2Ray() {
         rm -rf /www/server/panel/vhost/nginx/$(V2ray_info_query '\"add\"').conf
         rm -rf /www/server/panel/vhost/cert/$(V2ray_info_query '\"add\"')
         rm -rf /www/wwwroot/$(V2ray_info_query '\"add\"')/
-    else    
-        sed -i "/\location \/vcache\//,/}/d"  /www/server/panel/vhost/nginx/$(V2ray_info_query '\"add\"').conf
+    else
+        sed -i "/\location \/6986f19137896fba\//,/}/d"  /www/server/panel/vhost/nginx/$(V2ray_info_query '\"add\"').conf
     fi
     rm -rf /etc/systemd/system/v2ray.service
     rm -rf /usr/bin/v2ray

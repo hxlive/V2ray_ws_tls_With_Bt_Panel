@@ -3,7 +3,7 @@ PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
 #   Dscription: V2ray ws+tls With Bt-Panel
-#   Version: 1.4.22.0115
+#   Version: 1.5.22.0118
 
 #fonts color
 Red="\033[1;31m"
@@ -134,7 +134,7 @@ v2ray_VMESS_install() {
         }
 } 
 EOF
-    if [[ $(V2ray_info_query '\"aid\"') == 16  ]]; then
+    if [[ $(V2ray_info_query '\"state\"') == 16  ]]; then
         sleep 1
     else    
         sed -i "/    ssl_certificate    /www/server/panel/vhost/cert/${domain}/fullchain.cer/c  \    ssl_certificate    /www/server/panel/vhost/cert/${domain}/fullchain.pem;" /www/server/panel/vhost/nginx/${domain}.conf
@@ -148,12 +148,13 @@ EOF
   "add": "${domain}",
   "port": "443",
   "id": "${UUID}",
-  "aid": "${webstate}",
+  "aid": "0",
   "net": "ws",
   "type": "none",
   "host": "${domain}",
   "path": "/6986f19137896fba/",
-  "tls": "tls"
+  "tls": "tls",
+  "state": "${webstate}"
 }
 EOF
 }
@@ -184,7 +185,7 @@ v2ray_VLESS_install() {
         }
 } 
 EOF
-    if [[ $(V2ray_info_query '\"aid\"') == 16  ]]; then
+    if [[ $(V2ray_info_query '\"state\"') == 16  ]]; then
         sleep 1
     else    
         sed -i "/    ssl_certificate    /www/server/panel/vhost/cert/${domain}/fullchain.cer/c  \    ssl_certificate    /www/server/panel/vhost/cert/${domain}/fullchain.pem;" /www/server/panel/vhost/nginx/${domain}.conf
@@ -198,12 +199,13 @@ EOF
   "add": "${domain}",
   "port": "443",
   "id": "${UUID}",
-  "aid": "${webstate}",  
+  "aid": "0",  
   "net": "ws",
   "type": "none",
   "host": "${domain}",
   "path": "/6986f19137896fba/",
-  "tls": "tls"
+  "tls": "tls",
+  "state": "${webstate}"
 }
 EOF
 }
@@ -228,7 +230,7 @@ V2Ray_VMESS_information() {
         echo -e "${Green} 地址（address）:${Font} $(V2ray_info_query '\"add\"') "
         echo -e "${Green} 端口（port）：${Font} $(V2ray_info_query '\"port\"') "
         echo -e "${Green} 用户ID（id）：${Font} $(V2ray_info_query '\"id\"')"
-        echo -e "${Green} 额外ID（alterId）：${Font} 16"
+        echo -e "${Green} 额外ID（alterId）：${Font} 0"
         echo -e "${Green} 加密方式（security）：${Font} auto"
         echo -e "${Green} 传输协议（network）：${Font} ws"
         echo -e "${Green} 伪装类型（type）：${Font} none"
@@ -242,7 +244,7 @@ V2Ray_VMESS_information() {
 
 V2Ray_VLESS_information() {
     clear
-    vless_link="vless://$(V2ray_info_query '\"id\"')@$(V2ray_info_query '\"add\"'):443?encryption=none&security=tls&type=ws&host=$(V2ray_info_query '\"add\"')&path=%2f6986f19137896fba%2f#$(V2ray_info_query '\"add\"')"
+    vless_link="vless://$(V2ray_info_query '\"id\"')@$(V2ray_info_query '\"add\"'):443?encryption=none&security=tls&type=ws&host=$(V2ray_info_query '\"add\"')&path=%2f6986f19137896fba%2f#$(V2ray_info_query '\"ps\"')"
     {
         echo -e "${Green} V2ray vless+ws+tls 安装成功${Font}"
         echo -e "${Blue}=====================================================${Font}"
@@ -367,7 +369,7 @@ Write_VMESS_Conf() {
       {
         "id": "${UUID}",
         "level": 0, 
-        "alterId": 16
+        "alterId": 0
         }
       ]
      }, 

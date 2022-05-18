@@ -3,7 +3,7 @@ PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
 #   Dscription: V2ray ws+tls With Bt-Panel
-#   Version: 1.5.22.0118
+#   Version: 1.6.22.0518
 
 #fonts color
 Red="\033[1;31m"
@@ -525,8 +525,9 @@ Main_menu() {
     echo -e "    ${Green}2. 安装 V2Ray (VLESS+ws+tls)${Font}"
     echo -e "    ${Green}3. 查看 V2Ray 配置信息${Font}"
     echo -e "    ${Green}4. 升级 V2Ray Core${Font}"
-    echo -e "    ${Red}5. 卸载 V2Ray 及配置${Font}"
-    echo -e "    ${Green}6. 退出 V2Ray 部署脚本${Font}" 
+    echo -e "    ${Green}5. 重启 V2Ray 服务${Font}"    
+    echo -e "    ${Red}6. 卸载 V2Ray 及配置${Font}"
+    echo -e "    ${Green}7. 退出 V2Ray 部署脚本${Font}" 
     echo -e ""    
     read -rp " 请输入数字：" menu_num
     case $menu_num in
@@ -544,9 +545,14 @@ Main_menu() {
         bash install-release.sh
         ;;
     5)
-        uninstall_V2Ray
+        systemctl daemon-reload
+        /www/server/nginx/sbin/nginx -s reload
+        systemctl restart v2ray.service
         ;;
     6)
+        uninstall_V2Ray
+        ;;
+    7)
         exit 0
         ;;
     *)

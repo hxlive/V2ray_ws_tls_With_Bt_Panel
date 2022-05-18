@@ -548,6 +548,7 @@ Main_menu() {
         systemctl daemon-reload
         /www/server/nginx/sbin/nginx -s reload
         systemctl restart v2ray.service
+        systemctl status v2ray
         ;;
     6)
         uninstall_V2Ray
